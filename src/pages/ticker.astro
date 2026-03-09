@@ -1,0 +1,425 @@
+---
+// src/pages/ticker.astro
+const defaultPresets = [
+  '🔴 LIVE di YouTube & TikTok — Tonton sampai habis ya!  •  🎮 Lagi main — request game di kolom komentar!  •  📱 Jangan lupa follow & nyalain notifikasi!  •  💬 Komen & chat bebas, gw baca semua kok!  •  🎁 Support stream lewat Saweria — link di bio!',
+  '🎮 Lagi gaming nih — request di chat!  •  📱 Follow & nyalain notif biar ga ketinggalan!',
+  '💬 Chat aktif terus ya!  •  🎁 Donasi via Saweria — link di bio!',
+];
+---
+
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ticker Control</title>
+    <style>
+        :root { --bg: #0f0f0f; --card: #1a1a1a; }
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg);
+            color: white;
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            gap: 14px;
+        }
+        .top-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            max-width: 360px;
+        }
+        .back-btn {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 12px;
+            color: white;
+            padding: 8px 14px;
+            font-size: 0.85rem;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .status-bar {
+            flex: 1;
+            font-size: 0.8rem;
+            padding: 5px 15px;
+            border-radius: 20px;
+            background: #222;
+            border: 1px solid #333;
+            text-align: center;
+        }
+        .section-label {
+            width: 100%;
+            max-width: 360px;
+            font-size: 0.7rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        /* Kolom ketik bebas */
+        .custom-box {
+            width: 100%;
+            max-width: 360px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .custom-box textarea {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.85rem;
+            padding: 10px;
+            resize: none;
+            height: 70px;
+            font-family: system-ui, sans-serif;
+            width: 100%;
+            outline: none;
+        }
+        .custom-box textarea:focus { border-color: #00d4ff; }
+        .fire-custom-btn {
+            background: #0a1a2a;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            color: #00d4ff;
+            font-size: 0.85rem;
+            font-weight: bold;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .fire-custom-btn:active { background: #00d4ff; color: #0a0a0a; }
+
+        /* Preset list */
+        .preset-list {
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .preset-item {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .preset-item.active { border-color: #00ff88; }
+        .preset-text {
+            flex: 1;
+            font-size: 0.75rem;
+            color: #aaa;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .preset-text:active { color: white; }
+        .preset-item.active .preset-text { color: #00ff88; }
+        .edit-btn, .fire-btn {
+            flex-shrink: 0;
+            background: none;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #888;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .fire-btn { border-color: #00ff88; color: #00ff88; }
+        .fire-btn:active { background: #00ff88; color: #0a0a0a; }
+        .edit-btn:active { background: #333; color: white; }
+
+        /* Edit modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #1a1a1a;
+            border: 2px solid #444;
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .modal h3 { font-size: 0.9rem; color: #aaa; margin: 0; }
+        .modal textarea {
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.85rem;
+            padding: 10px;
+            resize: none;
+            height: 100px;
+            font-family: system-ui, sans-serif;
+            outline: none;
+        }
+        .modal textarea:focus { border-color: #00d4ff; }
+        .modal-actions { display: flex; gap: 8px; }
+        .modal-save {
+            flex: 1;
+            background: #0a2a0a;
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            color: #00ff88;
+            font-weight: bold;
+            padding: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .modal-save:active { background: #00ff88; color: #0a0a0a; }
+        .modal-cancel {
+            flex: 1;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: #888;
+            padding: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .modal-cancel:active { background: #333; }
+
+        /* Stop button */
+        .stop-btn {
+            width: 100%;
+            max-width: 360px;
+            padding: 16px;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.1s;
+            -webkit-tap-highlight-color: transparent;
+            border: 2px solid #ff4b2b;
+            background: #2a0a0a;
+            color: #ff4b2b;
+        }
+        .stop-btn:active { background: #ff4b2b; color: white; }
+        .stop-btn.inactive { border-color: #333; color: #444; background: #1a1a1a; pointer-events: none; }
+
+        #feedback {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: #00ff88;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 200;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <a href="/" class="back-btn">← Back</a>
+        <div class="status-bar">
+            📺 Ticker — <span id="status-text" style="color:#00ff88;">Ready</span>
+        </div>
+    </div>
+
+    <button class="stop-btn inactive" id="stop-btn">⏹ STOP TICKER</button>
+
+    <div class="section-label">✏️ Ketik bebas</div>
+    <div class="custom-box">
+        <textarea id="custom-input" placeholder="Tulis teks ticker di sini..."></textarea>
+        <button class="fire-custom-btn" id="fire-custom-btn">▶ JALANIN TEKS INI</button>
+    </div>
+
+    <div class="section-label">📋 Preset</div>
+    <div class="preset-list" id="preset-list"></div>
+
+    <!-- Modal Edit -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h3>Edit Preset</h3>
+            <textarea id="modal-input"></textarea>
+            <div class="modal-actions">
+                <button class="modal-cancel" id="modal-cancel">Batal</button>
+                <button class="modal-save" id="modal-save">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="feedback"></div>
+
+    <script is:inline define:vars={{ defaultPresets }}>
+        const STORAGE_KEY = 'ticker_presets';
+        let activeIndex = null;
+        let editingIndex = null;
+
+        // Load presets dari localStorage, fallback ke default
+        function loadPresets() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved) : [...defaultPresets];
+            } catch {
+                return [...defaultPresets];
+            }
+        }
+
+        function savePresets(presets) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+        }
+
+        function showFeedback(msg, color) {
+            const el = document.getElementById('feedback');
+            el.innerText = msg;
+            el.style.color = color || '#00ff88';
+            el.style.opacity = '1';
+            setTimeout(() => el.style.opacity = '0', 2000);
+        }
+
+        function setStopBtn(active) {
+            const btn = document.getElementById('stop-btn');
+            if (active) btn.classList.remove('inactive');
+            else btn.classList.add('inactive');
+        }
+
+        async function fireTicker(text, index) {
+            try {
+                const res = await fetch('http://192.168.100.70:4321/api/ticker', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, active: true })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    activeIndex = index ?? null;
+                    renderPresets();
+                    setStopBtn(true);
+                    showFeedback('✅ Ticker nyala!');
+                }
+            } catch(e) {
+                showFeedback('❌ Gagal kirim', '#ff4b2b');
+            }
+        }
+
+        async function stopTicker() {
+            try {
+                const res = await fetch('http://192.168.100.70:4321/api/ticker', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: null, active: false })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    activeIndex = null;
+                    renderPresets();
+                    setStopBtn(false);
+                    showFeedback('⏹ Ticker mati', '#ffaa00');
+                }
+            } catch(e) {
+                showFeedback('❌ Gagal stop', '#ff4b2b');
+            }
+        }
+
+        function renderPresets() {
+            const presets = loadPresets();
+            const list = document.getElementById('preset-list');
+            list.innerHTML = '';
+            presets.forEach((text, i) => {
+                const item = document.createElement('div');
+                item.className = 'preset-item' + (activeIndex === i ? ' active' : '');
+
+                const textEl = document.createElement('span');
+                textEl.className = 'preset-text';
+                textEl.textContent = text;
+                textEl.addEventListener('pointerdown', (e) => { e.preventDefault(); fireTicker(text, i); });
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-btn';
+                editBtn.textContent = '✏️';
+                editBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); openModal(i); });
+
+                const fireBtn = document.createElement('button');
+                fireBtn.className = 'fire-btn';
+                fireBtn.textContent = '▶';
+                fireBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); fireTicker(text, i); });
+
+                item.appendChild(textEl);
+                item.appendChild(editBtn);
+                item.appendChild(fireBtn);
+                list.appendChild(item);
+            });
+        }
+
+        function openModal(index) {
+            const presets = loadPresets();
+            editingIndex = index;
+            document.getElementById('modal-input').value = presets[index];
+            document.getElementById('modal').classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('open');
+            editingIndex = null;
+        }
+
+        document.getElementById('modal-save').addEventListener('click', () => {
+            const presets = loadPresets();
+            const newText = document.getElementById('modal-input').value.trim();
+            if (newText && editingIndex !== null) {
+                presets[editingIndex] = newText;
+                savePresets(presets);
+                renderPresets();
+                showFeedback('✅ Preset disimpan!');
+            }
+            closeModal();
+        });
+
+        document.getElementById('modal-cancel').addEventListener('click', closeModal);
+
+        document.getElementById('fire-custom-btn').addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            const text = document.getElementById('custom-input').value.trim();
+            if (text) {
+                fireTicker(text, null);
+            } else {
+                showFeedback('⚠️ Teksnya kosong!', '#ffaa00');
+            }
+        });
+
+        document.getElementById('stop-btn').addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            stopTicker();
+        });
+
+        renderPresets();
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+---
+// src/pages/display.astro
+---
+<html lang="id">
+<head>
+    <title>Display Meme</title>
+</head>
+<body style="background: transparent; margin: 0; overflow: hidden; width: 100vw; height: 100vh;">
+
+    <div id="meme-container" style="display:flex; justify-content:center; align-items:center; height:100vh; width:100vw;">
+        <img id="meme-img" style="max-width:80%; display:none;" />
+        <video id="meme-vid" style="max-width:80%; display:none;" playsinline></video>
+    </div>
+
+    <script is:inline>
+        const img = document.getElementById('meme-img');
+        const vid = document.getElementById('meme-vid');
+        let lastT = 0;
+
+        function playMeme(file, type) {
+            const url = `http://192.168.100.70:4321/memes/${file}`;
+            img.style.display = 'none';
+            vid.style.display = 'none';
+            vid.pause();
+
+            if (type === 'video') {
+                vid.src = url + '?t=' + Date.now();
+                vid.style.display = 'block';
+                vid.play().catch(e => console.warn('Autoplay blocked:', e));
+                vid.onended = () => { vid.style.display = 'none'; };
+            } else {
+                img.src = url + '?t=' + Date.now();
+                img.style.display = 'block';
+                setTimeout(() => { img.style.display = 'none'; }, 4000);
+            }
+        }
+
+        // Polling setiap 1 detik ke /api/meme
+        async function poll() {
+            try {
+                const res = await fetch('http://192.168.100.70:4321/api/meme', { cache: 'no-store' });
+                const data = await res.json();
+                if (data.file && data.t > lastT) {
+                    lastT = data.t;
+                    console.log('[DISPLAY] Playing:', data.file);
+                    playMeme(data.file, data.type);
+                }
+            } catch(e) {
+                console.warn('[DISPLAY] Poll error:', e);
+            }
+        }
+
+        // Unlock autoplay waktu klik
+        document.addEventListener('click', () => {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            ctx.resume();
+        }, { once: true });
+
+        setInterval(poll, 1000);
+        poll(); // langsung poll sekali waktu load
+    </script>
+</body>
+</html>

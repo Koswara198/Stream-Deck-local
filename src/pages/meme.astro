@@ -1,0 +1,138 @@
+---
+// src/pages/meme.astro
+const memes = [
+  { id: 'm1', label: '😂 BRUH', file: 'BRUH.mp4', type: 'video', color: '#ff4b2b' },
+  { id: 'm2', label: '😲 WOW', file: 'wow.gif', type: 'image', color: '#00d4ff' },
+];
+---
+
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Meme Board</title>
+    <style>
+        :root { --bg: #0f0f0f; --card: #1a1a1a; }
+        body {
+            background-color: var(--bg);
+            color: white;
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .status-bar {
+            margin-bottom: 20px;
+            font-size: 0.8rem;
+            padding: 5px 15px;
+            border-radius: 20px;
+            background: #222;
+            border: 1px solid #333;
+        }
+        .deck-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .sd-button {
+            width: 100px;
+            height: 100px;
+            background: var(--card);
+            border: 2px solid #333;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            color: white;
+            transition: all 0.1s;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .sd-button:active { transform: scale(0.95); border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .label { font-size: 0.8rem; font-weight: bold; text-align: center; }
+        .indicator { width: 25px; height: 3px; border-radius: 2px; margin-bottom: 8px; }
+        #feedback {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: #00ff88;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <a href="/" style="background:#1a1a1a; border:2px solid #333; border-radius:12px; color:white; padding:8px 14px; font-size:0.85rem; text-decoration:none;">← Back</a>
+        <div class="status-bar" style="margin-bottom:0;">
+            🎯 Meme Board — <span id="status-text" style="color: #00ff88;">Ready</span>
+        </div>
+    </div>
+
+    <div class="deck-grid">
+        {memes.map((m) => (
+            <div class="sd-button meme-trigger"
+                 data-file={m.file}
+                 data-type={m.type}
+                 style={`--accent: ${m.color}`}>
+                <div class="indicator" style={`background-color: ${m.color}`}></div>
+                <span class="label">{m.label}</span>
+            </div>
+        ))}
+    </div>
+
+    <div id="feedback">✅ Fired!</div>
+
+    <script is:inline>
+        function showFeedback(msg, color) {
+            const el = document.getElementById('feedback');
+            el.innerText = msg;
+            el.style.color = color || '#00ff88';
+            el.style.opacity = '1';
+            setTimeout(() => el.style.opacity = '0', 2000);
+        }
+
+        // Kirim ke API lokal Astro — simple POST, no WebSocket needed
+        async function fireMeme(file, type) {
+            console.log('[MEME] Firing:', file, type);
+            try {
+                const res = await fetch('http://192.168.100.70:4321/api/meme', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file, type })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    showFeedback('✅ ' + file);
+                } else {
+                    showFeedback('❌ API error', '#ff4b2b');
+                }
+            } catch(e) {
+                console.error('[MEME] Fetch error:', e);
+                showFeedback('❌ Gagal kirim', '#ff4b2b');
+            }
+        }
+
+        document.querySelectorAll('.meme-trigger').forEach(btn => {
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                const file = btn.getAttribute('data-file');
+                const type = btn.getAttribute('data-type');
+                fireMeme(file, type);
+            });
+        });
+    </script>
+</body>
+</html>

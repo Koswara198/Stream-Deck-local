@@ -1,0 +1,160 @@
+---
+// src/pages/ticker-display.astro
+---
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticker Display</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: transparent;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ticker-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 56px;
+            background: rgba(0, 0, 0, 0.82);
+            border-bottom: 3px solid #ff4b2b;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        #ticker-wrapper.visible { opacity: 1; }
+
+        #live-badge {
+            flex-shrink: 0;
+            background: #ff4b2b;
+            color: white;
+            font-weight: 900;
+            font-size: 0.85rem;
+            padding: 6px 14px;
+            letter-spacing: 2px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        #ticker-track {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            height: 100%;
+        }
+
+        /* Teks tidak pakai CSS animation lagi — digerakin JS */
+        #ticker-text {
+            position: absolute;
+            white-space: nowrap;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            font-family: system-ui, sans-serif;
+            letter-spacing: 0.5px;
+            will-change: left;
+        }
+    </style>
+</head>
+<body>
+    <div id="ticker-wrapper">
+        <div id="live-badge">● LIVE</div>
+        <div id="ticker-track">
+            <span id="ticker-text"></span>
+        </div>
+    </div>
+
+    <script is:inline>
+        const wrapper = document.getElementById('ticker-wrapper');
+        const track = document.getElementById('ticker-track');
+        const tickerText = document.getElementById('ticker-text');
+
+        let currentActive = false;
+        let currentText = null;
+        let animFrame = null;
+        let pos = 0;
+        const SPEED = 1.2; // px per frame — naikin buat lebih cepat
+
+        function startScroll() {
+            if (animFrame) cancelAnimationFrame(animFrame);
+
+            const trackWidth = track.offsetWidth;
+            const textWidth = tickerText.offsetWidth;
+
+            // Mulai dari kanan track
+            pos = trackWidth;
+            tickerText.style.left = pos + 'px';
+
+            function step() {
+                pos -= SPEED;
+                // Kalau teks udah lewat habis ke kiri, reset ke kanan lagi
+                if (pos < -textWidth) {
+                    pos = trackWidth;
+                }
+                tickerText.style.left = pos + 'px';
+                animFrame = requestAnimationFrame(step);
+            }
+
+            animFrame = requestAnimationFrame(step);
+        }
+
+        function stopScroll() {
+            if (animFrame) {
+                cancelAnimationFrame(animFrame);
+                animFrame = null;
+            }
+        }
+
+        function showTicker(text) {
+            if (text !== currentText) {
+                currentText = text;
+                tickerText.textContent = text;
+                stopScroll();
+                // Tunggu sebentar biar browser hitung offsetWidth dulu
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        startScroll();
+                    });
+                });
+            }
+            if (!currentActive) {
+                wrapper.classList.add('visible');
+                currentActive = true;
+            }
+        }
+
+        function hideTicker() {
+            stopScroll();
+            wrapper.classList.remove('visible');
+            currentActive = false;
+            currentText = null;
+        }
+
+        async function poll() {
+            try {
+                const res = await fetch('http://192.168.100.70:4321/api/ticker', { cache: 'no-store' });
+                const data = await res.json();
+                if (data.active && data.text) {
+                    showTicker(data.text);
+                } else if (!data.active) {
+                    hideTicker();
+                }
+            } catch(e) {
+                console.warn('[TICKER] Poll error:', e);
+            }
+        }
+
+        setInterval(poll, 1000);
+        poll();
+    </script>
+</body>
+</html>
