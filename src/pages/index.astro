@@ -1,11 +1,9 @@
 ---
-// Bagian Frontmatter Astro - TOMBOL BARU UNTUK MEME
-const buttons = [
-  { id: 'sc-portrait', label: '📱 PORTRAIT', color: '#00d4ff', scene: 'portrait' },
-  { id: 'sc-rehat', label: '☕ REHAT', color: '#ff4b2b', scene: 'rehat' },
-  { id: 'btn-to-ticker', label: '📺 TICKER', color: '#ffaa00', url: '/ticker' },
-  { id: 'btn-to-meme', label: '🤡 MEME BOARD', color: '#ff00ff', url: '/meme' },
-];
+// src/pages/index.astro
+const ip = import.meta.env.PUBLIC_IP;
+const port = import.meta.env.PUBLIC_PORT;
+const astroPort = import.meta.env.PUBLIC_ASTRO_PORT;
+const apiToken = import.meta.env.PUBLIC_API_KEY;
 ---
 
 <html lang="id">
@@ -14,213 +12,169 @@ const buttons = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Astro Stream Deck</title>
     <style>
-        :root {
-            --bg-color: #0f0f0f;
-            --card-bg: #1a1a1a;
-        }
-
+        :root { --bg-color: #0f0f0f; --card-bg: #1a1a1a; }
         body {
-            background-color: var(--bg-color);
-            color: white;
+            background-color: var(--bg-color); color: white;
             font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow: hidden;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            min-height: 100vh; margin: 0; padding: 20px;
         }
-
         .status-bar {
-            margin-bottom: 20px;
-            font-size: 0.8rem;
-            padding: 5px 15px;
-            border-radius: 20px;
-            background: #222;
-            border: 1px solid #333;
+            margin-bottom: 10px; font-size: 0.8rem;
+            padding: 5px 15px; border-radius: 20px;
+            background: #222; border: 1px solid #333;
         }
-
         .deck-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); /* Ganti ke 3 jika ingin 3 kolom */
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
+            margin-top: 16px;
         }
-
         .sd-button {
-            width: 110px;
-            height: 110px;
+            width: 110px; height: 110px;
             background: var(--card-bg);
-            border: 2px solid #333;
-            border-radius: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.1s active;
+            border: 2px solid #333; border-radius: 15px;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.1s;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             -webkit-tap-highlight-color: transparent;
+            text-decoration: none; color: white;
         }
-
         .sd-button:active {
             transform: scale(0.9);
             border-color: var(--accent-color);
             box-shadow: 0 0 15px var(--accent-color);
         }
-
-        .label {
-            font-size: 0.9rem;
-            font-weight: bold;
-            text-align: center;
+        .sd-button.active-scene {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 12px var(--accent-color);
         }
-
-        .indicator {
-            width: 30px;
-            height: 3px;
-            border-radius: 2px;
-            margin-bottom: 10px;
-        }
+        .label { font-size: 0.85rem; font-weight: bold; text-align: center; padding: 0 6px; }
+        .indicator { width: 30px; height: 3px; border-radius: 2px; margin-bottom: 10px; }
+        #loading { font-size: 0.75rem; color: #555; margin-top: 8px; }
     </style>
 </head>
 <body>
-    
-    <div class="status-bar">
-        <strong>Astro Stream Deck</strong> - Klik tombol untuk ganti scene atau buka halaman lain!
-
-    </div>
-
+    <div class="status-bar"><strong>Astro Stream Deck</strong></div>
     <div class="status-bar">
         Status: <span id="conn-text" style="color: #ffaa00;">Connecting...</span>
     </div>
 
-    <div class="deck-grid">
-        {buttons.map((btn) => (
-            btn.url ? (
-                // Jika ada URL, bungkus dengan tag <a>
-                <a href={btn.url} class="sd-button" id={btn.id} style={`--accent-color: ${btn.color}; text-decoration: none; color: white;`}>
-                    <div class="indicator" style={`background-color: ${btn.color}`}></div>
-                    <span class="label">{btn.label}</span>
-                </a>
-            ) : (
-                // Jika tidak ada URL, tetap jadi tombol Scene biasa
-                <div 
-                    class="sd-button" 
-                    id={btn.id} 
-                    style={`--accent-color: ${btn.color}`}
-                    data-scene={btn.scene}
-                >
-                    <div class="indicator" style={`background-color: ${btn.color}`}></div>
-                    <span class="label">{btn.label}</span>
-                </div>
-            )
-        ))}
-    </div>
+    <div class="deck-grid" id="deck-grid"></div>
+    <div id="loading">Memuat scene...</div>
 
-    <script>
-		const IP_PC = '192.168.100.70'; 
-		const PORT = '59650'; 
-		const API_TOKEN = 'af13b44a2071ea35b75b6a423b99e5a99702c47'; 
-	
-		let socket;
-		const statusText = document.getElementById('conn-text');
-	
-		function connect() {
-			socket = new WebSocket(`ws://${IP_PC}:${PORT}/api/websocket`);
-	
-			socket.onopen = () => {
-				// Auth dulu
-				sendCommand("TcpServerService", "auth", [API_TOKEN], 1);
-			};
-	
-			socket.onmessage = (event) => {
-				const data = JSON.parse(event.data);
-				console.log('Respon Streamlabs:', data);
-	
-				if (data.id === 1 && !data.error) {
-					statusText.innerText = 'Connected & Authorized ✅';
-					statusText.style.color = '#00ff88';
-				}
-			};
-	
-			socket.onclose = () => {
-				statusText.innerText = 'Connecting... 🔄';
-				setTimeout(connect, 3000);
-			};
-		}
-	
-		// Fungsi sakti untuk ganti scene
-		async function changeScene(targetName) {
-			// 1. Minta daftar semua scene dulu
-			const requestId = Date.now();
-			const getScenesMsg = {
-				jsonrpc: "2.0",
-				id: requestId,
-				method: "getScenes",
-				params: { resource: "ScenesService" }
-			};
-			socket.send(JSON.stringify(getScenesMsg));
-	
-			// 2. Tunggu respon sebentar dan cari yang namanya cocok
-			const handler = (event) => {
-				const data = JSON.parse(event.data);
-				if (data.id === requestId && data.result) {
-					const targetScene = data.result.find(s => s.name.toLowerCase() === targetName.toLowerCase());
-					
-					if (targetScene) {
-						console.log(`Menemukan ID untuk ${targetName}: ${targetScene.id}`);
-						// 3. Panggil scene pakai ID-nya
-						sendCommand("ScenesService", "makeSceneActive", [targetScene.id]);
-					} else {
-						console.error(`Scene "${targetName}" tidak ditemukan di Streamlabs!`);
-					}
-					socket.removeEventListener('message', handler);
-				}
-			};
-			socket.addEventListener('message', handler);
-		}
-	
-		function sendCommand(resource, method, args = [], id = Date.now()) {
-			if (socket && socket.readyState === WebSocket.OPEN) {
-				socket.send(JSON.stringify({
-					jsonrpc: "2.0", id, method,
-					params: { resource, args }
-				}));
-			}
-		}
-	
-		document.querySelectorAll('.sd-button').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const scene = btn.getAttribute('data-scene');
-        const action = btn.getAttribute('data-action');
+    <script is:inline define:vars={{ ip, port, apiToken, astroPort }}>
+        let socket = null;
+        const statusText = document.getElementById('conn-text');
+        const grid = document.getElementById('deck-grid');
+        const loading = document.getElementById('loading');
 
-        if (scene) {
-            changeScene(scene);
-        } else if (action === 'toggle-mic' || action === 'toggle-mmic') {
-            const sourceName = action === 'toggle-mic' ? "Mic/Aux" : "Mmic";
-            console.log("Menjalankan Toggle untuk:", sourceName);
+        const COLORS = ['#00d4ff','#ff4b2b','#00ff88','#ffcc00','#a855f7','#ffaa00','#ec4899','#06b6d4','#84cc16','#f97316'];
+        let activeSceneId = null;
+        let scenesRendered = false;
 
-            // Kita pakai metode 'toggleMute' tapi pastikan Resource-nya tepat
-            // Jika ini masih 'null' tapi tidak berubah, kita pakai 'setMuted' manual
-            const requestId = Date.now();
-            
-            // COBA METODE LANGSUNG (Direct Toggle)
-            const toggleMsg = {
-                jsonrpc: "2.0",
-                id: requestId,
-                method: "toggleMute",
-                params: { 
-                    resource: "AudioService", 
-                    args: [sourceName] 
+        const FIXED_BUTTONS = [
+            { label: '📺 TICKER', color: '#ffaa00', url: '/ticker' },
+            { label: '🤡 MEME BOARD', color: '#ff00ff', url: '/meme' },
+        ];
+
+        function makeButton({ label, color, sceneId, url }) {
+            const el = document.createElement(url ? 'a' : 'div');
+            el.className = 'sd-button' + (sceneId ? ' scene-btn' : '');
+            el.setAttribute('style', `--accent-color:${color}; width:110px; height:110px; background:#1a1a1a; border:2px solid #333; border-radius:15px; display:flex; flex-direction:column; justify-content:center; align-items:center; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.3); text-decoration:none; color:white; -webkit-tap-highlight-color:transparent;`);
+            el.innerHTML = `<div style="width:30px;height:3px;border-radius:2px;margin-bottom:10px;background-color:${color}"></div><span style="font-size:0.85rem;font-weight:bold;text-align:center;padding:0 6px">${label}</span>`;
+            if (url) {
+                el.href = url;
+            } else {
+                el.dataset.sceneId = sceneId;
+                el.addEventListener('click', () => changeScene(sceneId));
+            }
+            return el;
+        }
+
+        function renderScenes(scenes) {
+            if (scenesRendered) return;
+            scenesRendered = true;
+            loading.style.display = 'none';
+            grid.innerHTML = '';
+
+            // Scene buttons
+            scenes.forEach((scene, i) => {
+                grid.appendChild(makeButton({
+                    label: scene.name,
+                    color: COLORS[i % COLORS.length],
+                    sceneId: scene.id
+                }));
+            });
+
+            // Fixed buttons (ticker & meme) — style sama
+            FIXED_BUTTONS.forEach(btn => grid.appendChild(makeButton(btn)));
+
+            highlightActive();
+        }
+
+        function highlightActive() {
+            grid.querySelectorAll('.scene-btn').forEach(btn => {
+                btn.classList.toggle('active-scene', btn.dataset.sceneId === activeSceneId);
+            });
+        }
+
+        function changeScene(sceneId) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(JSON.stringify({
+                jsonrpc: "2.0", id: 200,
+                method: "makeSceneActive",
+                params: { resource: "ScenesService", args: [sceneId] }
+            }));
+            activeSceneId = sceneId;
+            highlightActive();
+        }
+
+        function sendCommand(resource, method, args, id) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(JSON.stringify({
+                jsonrpc: "2.0", id: id || Date.now(), method,
+                params: { resource, args: args || [] }
+            }));
+        }
+
+        function connect() {
+            socket = new WebSocket('ws://' + ip + ':' + port + '/api/websocket');
+            socket.onopen = () => sendCommand("TcpServerService", "auth", [apiToken], 1);
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.id === 1 && !data.error) {
+                    statusText.innerText = 'Connected ✅';
+                    statusText.style.color = '#00ff88';
+                    sendCommand("ScenesService", "getScenes", [], 100);
+                    sendCommand("ScenesService", "activeScene", [], 101);
+                }
+
+                if (data.id === 100 && data.result) renderScenes(data.result);
+
+                if (data.id === 101 && data.result) {
+                    activeSceneId = data.result.id;
+                    highlightActive();
                 }
             };
-            
-            socket.send(JSON.stringify(toggleMsg));
+
+            socket.onclose = () => {
+                statusText.innerText = 'Connecting... 🔄';
+                statusText.style.color = '#ffaa00';
+                setTimeout(connect, 3000);
+            };
+
+            socket.onerror = () => {
+                statusText.innerText = 'Streamlabs offline ⚠️';
+                statusText.style.color = '#ffaa00';
+            };
         }
-    });
-});
-	
-		connect();
-	</script>
+
+        connect();
+    </script>
 </body>
 </html>

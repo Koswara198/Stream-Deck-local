@@ -1,5 +1,9 @@
 ---
 // src/pages/display.astro
+const ip = import.meta.env.PUBLIC_IP;
+const astroPort = import.meta.env.PUBLIC_ASTRO_PORT;
+const API = `http://${ip}:${astroPort}/api`;
+const MEMES_BASE = `http://${ip}:${astroPort}/memes`;
 ---
 <html lang="id">
 <head>
@@ -12,13 +16,13 @@
         <video id="meme-vid" style="max-width:80%; display:none;" playsinline></video>
     </div>
 
-    <script is:inline>
+    <script is:inline define:vars={{ API, MEMES_BASE }}>
         const img = document.getElementById('meme-img');
         const vid = document.getElementById('meme-vid');
         let lastT = 0;
 
         function playMeme(file, type) {
-            const url = `http://192.168.100.70:4321/memes/${file}`;
+            const url = MEMES_BASE + '/' + file;
             img.style.display = 'none';
             vid.style.display = 'none';
             vid.pause();
@@ -35,10 +39,9 @@
             }
         }
 
-        // Polling setiap 1 detik ke /api/meme
         async function poll() {
             try {
-                const res = await fetch('http://192.168.100.70:4321/api/meme', { cache: 'no-store' });
+                const res = await fetch(API + '/meme', { cache: 'no-store' });
                 const data = await res.json();
                 if (data.file && data.t > lastT) {
                     lastT = data.t;
@@ -50,14 +53,13 @@
             }
         }
 
-        // Unlock autoplay waktu klik
         document.addEventListener('click', () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
         }, { once: true });
 
         setInterval(poll, 1000);
-        poll(); // langsung poll sekali waktu load
+        poll();
     </script>
 </body>
 </html>

@@ -1,5 +1,8 @@
 ---
 // src/pages/ticker-display.astro
+const ip = import.meta.env.PUBLIC_IP;
+const astroPort = import.meta.env.PUBLIC_ASTRO_PORT;
+const API = `http://${ip}:${astroPort}/api`;
 ---
 <html lang="id">
 <head>
@@ -7,61 +10,27 @@
     <title>Ticker Display</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: transparent;
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-        }
-
+        body { background: transparent; overflow: hidden; width: 100vw; height: 100vh; }
         #ticker-wrapper {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 56px;
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 56px;
             background: rgba(0, 0, 0, 0.82);
             border-bottom: 3px solid #ff4b2b;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-            opacity: 0;
-            transition: opacity 0.5s ease;
+            display: flex; align-items: center; overflow: hidden;
+            opacity: 0; transition: opacity 0.5s ease;
         }
         #ticker-wrapper.visible { opacity: 1; }
-
         #live-badge {
-            flex-shrink: 0;
-            background: #ff4b2b;
-            color: white;
-            font-weight: 900;
-            font-size: 0.85rem;
-            padding: 6px 14px;
-            letter-spacing: 2px;
-            height: 100%;
-            display: flex;
-            align-items: center;
+            flex-shrink: 0; background: #ff4b2b; color: white;
+            font-weight: 900; font-size: 0.85rem; padding: 6px 14px;
+            letter-spacing: 2px; height: 100%; display: flex; align-items: center;
         }
-
-        #ticker-track {
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-            height: 100%;
-        }
-
-        /* Teks tidak pakai CSS animation lagi — digerakin JS */
+        #ticker-track { flex: 1; overflow: hidden; position: relative; height: 100%; }
         #ticker-text {
-            position: absolute;
-            white-space: nowrap;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: white;
-            font-family: system-ui, sans-serif;
-            letter-spacing: 0.5px;
-            will-change: left;
+            position: absolute; white-space: nowrap; top: 50%;
+            transform: translateY(-50%); font-size: 1.1rem;
+            font-weight: 600; color: white; font-family: system-ui, sans-serif;
+            letter-spacing: 0.5px; will-change: left;
         }
     </style>
 </head>
@@ -73,7 +42,7 @@
         </div>
     </div>
 
-    <script is:inline>
+    <script is:inline define:vars={{ API }}>
         const wrapper = document.getElementById('ticker-wrapper');
         const track = document.getElementById('ticker-track');
         const tickerText = document.getElementById('ticker-text');
@@ -82,36 +51,25 @@
         let currentText = null;
         let animFrame = null;
         let pos = 0;
-        const SPEED = 1.2; // px per frame — naikin buat lebih cepat
+        const SPEED = 1.2;
 
         function startScroll() {
             if (animFrame) cancelAnimationFrame(animFrame);
-
             const trackWidth = track.offsetWidth;
             const textWidth = tickerText.offsetWidth;
-
-            // Mulai dari kanan track
             pos = trackWidth;
             tickerText.style.left = pos + 'px';
-
             function step() {
                 pos -= SPEED;
-                // Kalau teks udah lewat habis ke kiri, reset ke kanan lagi
-                if (pos < -textWidth) {
-                    pos = trackWidth;
-                }
+                if (pos < -textWidth) pos = trackWidth;
                 tickerText.style.left = pos + 'px';
                 animFrame = requestAnimationFrame(step);
             }
-
             animFrame = requestAnimationFrame(step);
         }
 
         function stopScroll() {
-            if (animFrame) {
-                cancelAnimationFrame(animFrame);
-                animFrame = null;
-            }
+            if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
         }
 
         function showTicker(text) {
@@ -119,12 +77,7 @@
                 currentText = text;
                 tickerText.textContent = text;
                 stopScroll();
-                // Tunggu sebentar biar browser hitung offsetWidth dulu
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        startScroll();
-                    });
-                });
+                requestAnimationFrame(() => requestAnimationFrame(() => startScroll()));
             }
             if (!currentActive) {
                 wrapper.classList.add('visible');
@@ -141,11 +94,11 @@
 
         async function poll() {
             try {
-                const res = await fetch('http://192.168.100.70:4321/api/ticker', { cache: 'no-store' });
+                const res = await fetch(API + '/ticker', { cache: 'no-store' });
                 const data = await res.json();
                 if (data.active && data.text) {
                     showTicker(data.text);
-                } else if (!data.active) {
+                } else {
                     hideTicker();
                 }
             } catch(e) {

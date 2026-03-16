@@ -1,9 +1,8 @@
 ---
 // src/pages/meme.astro
-const memes = [
-  { id: 'm1', label: '😂 BRUH', file: 'BRUH.mp4', type: 'video', color: '#ff4b2b' },
-  { id: 'm2', label: '😲 WOW', file: 'wow.gif', type: 'image', color: '#00d4ff' },
-];
+const ip = import.meta.env.PUBLIC_IP;
+const astroPort = import.meta.env.PUBLIC_ASTRO_PORT;
+const API = `http://${ip}:${astroPort}/api`;
 ---
 
 <html lang="id">
@@ -11,128 +10,433 @@ const memes = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Meme Board</title>
-    <style>
-        :root { --bg: #0f0f0f; --card: #1a1a1a; }
-        body {
-            background-color: var(--bg);
-            color: white;
+    <style is:global>  /* TAMBAHKAN is:global DI SINI */
+    :root { --bg: #0f0f0f; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+        background-color: var(--bg);
+        color: white;
+        font-family: system-ui, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+        gap: 12px;
+    }
+
+    .top-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        max-width: 340px;
+        margin-bottom: 10px;
+    }
+
+    .back-btn {
+        background: #1a1a1a;
+        border: 2px solid #333;
+        border-radius: 12px;
+        color: white;
+        padding: 8px 14px;
+        font-size: 0.85rem;
+        text-decoration: none;
+    }
+
+    .page-title {
+        flex: 1;
+        font-size: 0.8rem;
+        padding: 8px;
+        border-radius: 20px;
+        background: #1a1a1a;
+        border: 1px solid #333;
+        text-align: center;
+    }
+
+    .meme-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px; /* Jarak antar baris */
+            width: 100%;
+            max-width: 340px;
+        }
+
+        .meme-row {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 10px;
+        width: 100%;
+        max-width: 340px;
+        margin-bottom: 10px;
+    }
+
+    .meme-btn {
+        flex: 1;
+        background: #222 !important; /* Pakai !important buat mastiin solid */
+        border: 2px solid #333;
+        border-radius: 16px;
+        padding: 15px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 4px 0 #000;
+    }
+
+    .delete-btn {
+        width: 55px;
+        background: #2a1010 !important;
+        border: 2px solid #441a1a;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 0 #000;
+    }
+        
+        .delete-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #000;
+            background: #ff4b2b;
+        }
+
+    /* TOMBOL TAMBAH - SOLID */
+    .add-btn {
+        width: 100%;
+        max-width: 340px;
+        margin-top: 10px;
+        padding: 18px;
+        border-radius: 16px;
+        background: #1a1a1a;
+        border: 2px solid #00ff8844;
+        color: #00ff88;
+        font-weight: bold;
+        text-align: center;
+        cursor: pointer;
+        box-shadow: 0 4px 0 #000;
+    }
+
+    .add-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 #000;
+    }
+
+    /* Modal & Feedback Tetap Sama */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.85); z-index: 100;
+        justify-content: center; align-items: center; padding: 20px;
+        backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+        background: #1a1a1a; border: 2px solid #333;
+        border-radius: 24px; padding: 24px;
+        width: 100%; max-width: 340px;
+        display: flex; flex-direction: column; gap: 14px;
+        }
+        .modal h3 { font-size: 1rem; color: #fff; }
+        .modal-label { font-size: 0.72rem; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal input, .modal select {
+            background: #0f0f0f; border: 1px solid #2a2a2a;
+            border-radius: 12px; color: white; font-size: 0.9rem;
+            padding: 13px 14px; outline: none; width: 100%;
             font-family: system-ui, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
         }
-        .status-bar {
-            margin-bottom: 20px;
-            font-size: 0.8rem;
-            padding: 5px 15px;
-            border-radius: 20px;
-            background: #222;
-            border: 1px solid #333;
+        .modal input:focus, .modal select:focus { border-color: #00d4ff; }
+        .modal select option { background: #1a1a1a; }
+        .drop-zone {
+            width: 100%; min-height: 88px; background: #0f0f0f;
+            border: 2px dashed #2a2a2a; border-radius: 14px;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            gap: 6px; cursor: pointer; padding: 16px; text-align: center;
+            transition: all 0.2s;
         }
-        .deck-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+        .drop-zone.dragover { border-color: #00d4ff; background: #0a1a20; }
+        .drop-icon { font-size: 1.8rem; }
+        .drop-text { font-size: 0.78rem; color: #555; }
+        .drop-filename { font-size: 0.82rem; color: #00d4ff; font-weight: bold; display: none; }
+        .modal-actions { display: flex; gap: 10px; }
+        .btn-save {
+            flex: 1; background: #0a1a0a; border: 1.5px solid #00ff88;
+            border-radius: 12px; color: #00ff88; font-weight: bold;
+            padding: 14px; cursor: pointer; font-size: 0.9rem;
         }
-        .sd-button {
-            width: 100px;
-            height: 100px;
-            background: var(--card);
-            border: 2px solid #333;
-            border-radius: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            color: white;
-            transition: all 0.1s;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
+        .btn-save:active { background: #00ff88; color: #0a0a0a; }
+        .btn-cancel {
+            flex: 1; background: #161616; border: 1.5px solid #2a2a2a;
+            border-radius: 12px; color: #666; padding: 14px; cursor: pointer; font-size: 0.9rem;
         }
-        .sd-button:active { transform: scale(0.95); border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
-        .label { font-size: 0.8rem; font-weight: bold; text-align: center; }
-        .indicator { width: 25px; height: 3px; border-radius: 2px; margin-bottom: 8px; }
+        .btn-cancel:active { background: #222; }
+
+        /* Konfirmasi hapus */
+        .confirm-box {
+            background: #161616; border: 1.5px solid #ff4b2b;
+            border-radius: 24px; padding: 28px 24px;
+            width: 100%; max-width: 300px;
+            display: flex; flex-direction: column; gap: 16px; text-align: center;
+        }
+        .confirm-box h3 { font-size: 1rem; color: #fff; }
+        .confirm-box p { font-size: 0.82rem; color: #666; line-height: 1.5; }
+        .confirm-actions { display: flex; gap: 10px; }
+        .btn-delete {
+            flex: 1; background: #1a0808; border: 1.5px solid #ff4b2b;
+            border-radius: 12px; color: #ff4b2b; font-weight: bold;
+            padding: 14px; cursor: pointer; font-size: 0.9rem;
+        }
+        .btn-delete:active { background: #ff4b2b; color: white; }
+        .btn-keep {
+            flex: 1; background: #161616; border: 1.5px solid #2a2a2a;
+            border-radius: 12px; color: #666; padding: 14px; cursor: pointer; font-size: 0.9rem;
+        }
+        .btn-keep:active { background: #222; }
+
         #feedback {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
-            color: #00ff88;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            white-space: nowrap;
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: rgba(10,10,10,0.92); color: #00ff88;
+            padding: 10px 20px; border-radius: 20px; font-size: 0.78rem;
+            font-weight: bold; opacity: 0; transition: opacity 0.3s;
+            pointer-events: none; white-space: nowrap; z-index: 999;
+            border: 1px solid rgba(255,255,255,0.08);
         }
     </style>
 </head>
 <body>
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
-        <a href="/" style="background:#1a1a1a; border:2px solid #333; border-radius:12px; color:white; padding:8px 14px; font-size:0.85rem; text-decoration:none;">← Back</a>
-        <div class="status-bar" style="margin-bottom:0;">
-            🎯 Meme Board — <span id="status-text" style="color: #00ff88;">Ready</span>
+    <div class="top-bar">
+        <a href="/" class="back-btn">← Back</a>
+        <div class="page-title">🤡 Meme Board</div>
+    </div>
+
+    <div class="meme-list" id="meme-list"></div>
+
+    <div class="add-btn" id="add-btn">＋ TAMBAH MEME</div>
+
+    <!-- Modal Tambah -->
+    <div class="modal-overlay" id="modal-add">
+        <div class="modal">
+            <h3>➕ Tambah Meme</h3>
+            <span class="modal-label">Label tombol</span>
+            <input type="text" id="input-label" placeholder="auto sesuai nama file yang diupload" maxlength="20" disabled />
+            <span class="modal-label">File meme (drag & drop atau klik)</span>
+            <div class="drop-zone" id="drop-zone">
+                <span class="drop-icon">🎬</span>
+                <span class="drop-text">Drop file di sini atau klik untuk pilih</span>
+                <span class="drop-filename" id="drop-filename"></span>
+                <input type="file" id="file-input" accept="video/*,image/gif,image/png,image/jpg,image/jpeg" style="display:none" />
+            </div>
+            <span class="modal-label">Tipe file</span>
+            <select id="input-type">
+                <option value="video">Video (mp4, webm)</option>
+                <option value="image">Image (gif, jpg, png)</option>
+            </select>
+            <div class="modal-actions">
+                <button class="btn-cancel" id="btn-cancel-add">Batal</button>
+                <button class="btn-save" id="btn-save-add">Tambah ✓</button>
+            </div>
         </div>
     </div>
 
-    <div class="deck-grid">
-        {memes.map((m) => (
-            <div class="sd-button meme-trigger"
-                 data-file={m.file}
-                 data-type={m.type}
-                 style={`--accent: ${m.color}`}>
-                <div class="indicator" style={`background-color: ${m.color}`}></div>
-                <span class="label">{m.label}</span>
+    <!-- Modal Konfirmasi Hapus -->
+    <div class="modal-overlay" id="modal-confirm">
+        <div class="confirm-box">
+            <h3>🗑️ Hapus Meme?</h3>
+            <p id="confirm-text"></p>
+            <div class="confirm-actions">
+                <button class="btn-keep" id="btn-keep">Batal</button>
+                <button class="btn-delete" id="btn-delete">Hapus</button>
             </div>
-        ))}
+        </div>
     </div>
 
-    <div id="feedback">✅ Fired!</div>
+    <div id="feedback"></div>
 
-    <script is:inline>
+    <script is:inline define:vars={{ API }}>
+        const COLORS = ['#ff4b2b','#00d4ff','#00ff88','#ffcc00','#ff00ff','#ffaa00','#a855f7','#ec4899','#06b6d4','#84cc16'];
+        let pendingDeleteId = null;
+        let pendingDeleteLabel = null;
+        let selectedFileName = null;
+
         function showFeedback(msg, color) {
             const el = document.getElementById('feedback');
             el.innerText = msg;
             el.style.color = color || '#00ff88';
             el.style.opacity = '1';
-            setTimeout(() => el.style.opacity = '0', 2000);
+            setTimeout(() => el.style.opacity = '0', 2500);
         }
 
-        // Kirim ke API lokal Astro — simple POST, no WebSocket needed
-        async function fireMeme(file, type) {
-            console.log('[MEME] Firing:', file, type);
+        async function loadMemes() {
             try {
-                const res = await fetch('http://192.168.100.70:4321/api/meme', {
+                const res = await fetch(API + '/memes', { cache: 'no-store' });
+                const memes = await res.json();
+                renderMemes(memes);
+            } catch(e) {
+                showFeedback('❌ Gagal load memes', '#ff4b2b');
+            }
+        }
+
+        function renderMemes(memes) {
+            const list = document.getElementById('meme-list');
+            list.innerHTML = '';
+            
+            memes.forEach((m, i) => {
+                const color = m.color || COLORS[i % COLORS.length];
+
+                // 1. Bikin Container Baris
+                const row = document.createElement('div');
+                row.className = 'meme-row';
+
+                // 2. Bikin Tombol Meme (Solid Card)
+                const btn = document.createElement('div');
+                btn.className = 'meme-btn';
+                btn.style.setProperty('--accent', color);
+                btn.innerHTML = `
+                    <div class="color-bar" style="background:${color}; box-shadow: 0 0 10px ${color}88"></div>
+                    <span class="meme-label">${m.label}</span>
+                    <span class="meme-type">${m.type}</span>
+                `;
+                btn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    fireMeme(m.file, m.type);
+                });
+
+                // 3. Bikin Tombol Hapus
+                const del = document.createElement('div');
+                del.className = 'delete-btn';
+                del.innerHTML = '🗑️';
+                del.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openConfirm(m.id, m.label);
+                });
+
+                // 4. Masukin ke list
+                row.appendChild(btn);
+                row.appendChild(del);
+                list.appendChild(row);
+            });
+        }
+
+        async function fireMeme(file, type) {
+            try {
+                const res = await fetch(API + '/meme', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ file, type })
                 });
                 const data = await res.json();
-                if (data.ok) {
-                    showFeedback('✅ ' + file);
-                } else {
-                    showFeedback('❌ API error', '#ff4b2b');
-                }
+                if (data.ok) showFeedback('🎬 ' + file);
             } catch(e) {
-                console.error('[MEME] Fetch error:', e);
                 showFeedback('❌ Gagal kirim', '#ff4b2b');
             }
         }
 
-        document.querySelectorAll('.meme-trigger').forEach(btn => {
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                const file = btn.getAttribute('data-file');
-                const type = btn.getAttribute('data-type');
-                fireMeme(file, type);
-            });
+        // Modal tambah
+        function openAdd() {
+            selectedFileName = null;
+            document.getElementById('input-label').value = '';
+            document.getElementById('input-type').value = 'video';
+            document.getElementById('drop-filename').style.display = 'none';
+            document.getElementById('drop-zone').querySelector('.drop-text').style.display = 'block';
+            document.getElementById('drop-zone').querySelector('.drop-icon').style.display = 'block';
+            document.getElementById('modal-add').classList.add('open');
+            setTimeout(() => document.getElementById('input-label').focus(), 100);
+        }
+        function closeAdd() {
+            document.getElementById('modal-add').classList.remove('open');
+            selectedFileName = null;
+        }
+
+        document.getElementById('add-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); openAdd(); });
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault(); dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]);
         });
+        fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFileSelect(fileInput.files[0]); });
+
+        function handleFileSelect(file) {
+            selectedFileName = file.name;
+            const isVideo = file.type.startsWith('video/') || file.name.endsWith('.mp4') || file.name.endsWith('.webm');
+            document.getElementById('input-type').value = isVideo ? 'video' : 'image';
+            const labelInput = document.getElementById('input-label');
+            if (!labelInput.value) labelInput.value = file.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 15);
+            const fn = document.getElementById('drop-filename');
+            fn.textContent = '📎 ' + file.name;
+            fn.style.display = 'block';
+            dropZone.querySelector('.drop-text').style.display = 'none';
+            dropZone.querySelector('.drop-icon').style.display = 'none';
+        }
+
+        document.getElementById('btn-cancel-add').addEventListener('click', closeAdd);
+        document.getElementById('btn-save-add').addEventListener('click', async () => {
+            const label = document.getElementById('input-label').value.trim();
+            const type = document.getElementById('input-type').value;
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0]; // Ambil file aslinya, bukan cuma namanya
+
+            if (!label || !file) { 
+                showFeedback('⚠️ Label dan File wajib ada!', '#ffaa00'); 
+                return; 
+            }
+
+            const formData = new FormData();
+            formData.append('label', label);
+            formData.append('type', type);
+            formData.append('file', file); // Kirim file fisik
+
+            try {
+                const res = await fetch(API + '/memes', {
+                    method: 'POST',
+                    body: formData // Kirim pakai FormData, jangan pakai JSON.stringify
+                });
+                const data = await res.json();
+                if (data.ok) { 
+                    closeAdd(); 
+                    showFeedback('✅ ' + label + ' Berhasil diupload!'); 
+                    loadMemes(); 
+                }
+            } catch(e) { 
+                showFeedback('❌ Gagal upload ke folder', '#ff4b2b'); 
+            }
+        });
+
+        // Konfirmasi hapus
+        function openConfirm(id, label) {
+            pendingDeleteId = id;
+            pendingDeleteLabel = label;
+            document.getElementById('confirm-text').innerText = 'Yakin mau hapus "' + label + '"?';
+            document.getElementById('modal-confirm').classList.add('open');
+        }
+        function closeConfirm() {
+            document.getElementById('modal-confirm').classList.remove('open');
+            pendingDeleteId = null; pendingDeleteLabel = null;
+        }
+
+        document.getElementById('btn-keep').addEventListener('click', closeConfirm);
+        document.getElementById('btn-delete').addEventListener('click', async () => {
+            if (!pendingDeleteId) return;
+            try {
+                const res = await fetch(API + '/memes', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: pendingDeleteId })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    showFeedback('🗑️ ' + pendingDeleteLabel + ' dihapus', '#ffaa00');
+                    closeConfirm(); loadMemes();
+                }
+            } catch(e) { showFeedback('❌ Gagal hapus', '#ff4b2b'); }
+        });
+
+        loadMemes();
     </script>
 </body>
 </html>

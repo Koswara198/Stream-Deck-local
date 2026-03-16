@@ -1,125 +1,176 @@
-# 🎮 Astro Stream Deck
+# 🎮 Stream Deck Local
 
-Stream deck lokal berbasis web buat kontrol Streamlabs + trigger meme langsung dari HP.
-
----
-
-## Stack
-
-- **Astro** (SSR mode) — web server + UI
-- **Streamlabs Desktop** — target OBS-based streaming app
-- **Browser Source** di Streamlabs — buat nampilin meme overlay
+Stream deck berbasis web yang bisa dikontrol lewat HP. Dibuat pakai Astro + Node.js, konek ke Streamlabs via WebSocket.
 
 ---
 
-## Struktur File
+## 📋 Daftar Isi
 
-```
-src/pages/
-├── index.astro        # Halaman utama stream deck (ganti scene, dll)
-├── meme.astro         # Meme board — tombol-tombol trigger meme
-├── display.astro      # Halaman overlay yang dipasang di Streamlabs browser source
-└── api/
-    └── meme.ts        # API endpoint — jembatan antara meme board & display
-```
+- [Yang Lo Butuhkan](#-yang-lo-butuhkan)
+- [Instalasi Pertama Kali](#-instalasi-pertama-kali)
+- [Cara Pake Sehari-hari](#-cara-pake-sehari-hari)
+- [Fitur](#-fitur)
+- [Struktur File](#-struktur-file)
+- [Troubleshooting](#-troubleshooting)
 
 ---
 
-## Cara Kerja
+## 🛠 Yang Lo Butuhkan
 
-```
-[HP: klik tombol meme]
-        ↓
-POST /api/meme  →  server simpan { file, type, timestamp } di memory
-                                        ↑
-[display.astro di Streamlabs]  ←── polling /api/meme tiap 1 detik
-                                    kalau timestamp baru → play meme
-```
+Sebelum mulai, pastiin ini semua udah ada di laptop streaming:
+
+| Software | Link Download | Keterangan |
+|---|---|---|
+| **Node.js** (v18+) | https://nodejs.org | Pilih yang **LTS** |
+| **Streamlabs** | https://streamlabs.com | Harus nyala waktu streaming |
+
+> **Penting:** Laptop dan HP harus konek ke **WiFi yang sama**.
 
 ---
 
-## Setup
+## 🚀 Instalasi Pertama Kali
 
-### 1. Install dependencies
+Lakukan ini **sekali saja** di awal.
+
+### 1. Install Dependencies
+
+Buka terminal / command prompt di folder project, jalanin:
 
 ```bash
 npm install
 ```
 
-### 2. Pastikan `astro.config.mjs` pakai SSR + node adapter
+### 2. Jalanin START.bat untuk Pertama Kali
 
-```js
-import { defineConfig } from 'astro/config';
-import node from '@astrojs/node';
+Dobel klik `START.bat`. Karena file `.env` belum ada, script akan **otomatis membuatnya** dan Notepad akan terbuka.
 
-export default defineConfig({
-  output: 'server',
-  adapter: node({ mode: 'standalone' }),
-  server: { host: true, port: 4321 },
-  preview: { host: true, port: 4321 },
-});
+**Cara ambil API Token Streamlabs:**
+1. Buka Streamlabs
+2. Klik ikon ⚙️ **Settings** (pojok kiri bawah)
+3. Pilih **Remote Control**
+4. Copy token yang ada di sana
+
+Di Notepad, ganti `ISI_TOKEN_STREAMLABS_DI_SINI` dengan token lo, lalu **Save** dan **tutup Notepad**.
+
+Jalanin `START.bat` lagi.
+
+> IP dan port Streamlabs akan **auto-detect** tiap `START.bat` dijalanin — ga perlu diisi manual.
+
+### 3. Setup Browser Source di Streamlabs (Sekali Saja)
+
+Saat pertama kali `START.bat` dijalanin dengan token yang bener, script otomatis membuat 2 Browser Source di scene yang lagi aktif:
+
+| Source | Fungsi | Ukuran |
+|---|---|---|
+| `ALERTS` | Overlay meme/video | 480x480px |
+| `ticker` | Teks berjalan | 480x60px |
+
+**⚠️ PENTING — Setelah source dibuat pertama kali, lo harus refresh manual sekali:**
+
+1. Di Streamlabs, klik source `ALERTS` di panel Sources
+2. Klik tombol **"Refresh cache of current page"** (ada di properties source)
+3. Ulangi untuk source `ticker`
+
+> Ini cukup **sekali saja**. Setelah itu source akan otomatis load tiap `START.bat` dijalanin.
+
+---
+
+## 🎯 Cara Pake Sehari-hari
+
+Tiap mau streaming, cukup:
+
+1. **Buka Streamlabs** dulu
+2. **Dobel klik `START.bat`** di folder project
+3. Tunggu sampai muncul `🎉 Streamlabs siap!`
+4. Browser di laptop otomatis kebuka
+5. **Buka di HP:** ketik URL yang muncul di terminal (contoh: `http://192.168.x.x:4321`)
+
+Selesai! Kontrol stream dari HP.
+
+---
+
+## ✨ Fitur
+
+### 🎮 Scene Switching (`/`)
+- Tombol scene otomatis menyesuaikan scene yang ada di Streamlabs
+- Scene yang lagi aktif di-highlight
+- Ganti scene langsung dari HP
+
+### 🎬 Meme Board (`/meme`)
+- Trigger meme/video/gif langsung muncul di overlay stream
+- Tambah meme baru via drag & drop file
+- Hapus meme dengan konfirmasi
+- Data meme tersimpan permanen (ga hilang walau server restart)
+
+### 📺 Ticker (`/ticker`)
+- Jalanin/stop teks berjalan di bagian atas layar stream
+- Edit teks langsung dari HP
+- Teks tersimpan di browser (ga hilang walau tab ditutup)
+
+---
+
+## 📁 Struktur File
+
 ```
-
-### 3. Jalankan dev server
-
-```bash
-npm run dev -- --host
-```
-
-### 4. Setup Browser Source di Streamlabs
-
-- Tambah **Browser Source** baru, kasih nama `ALERTS`
-- URL: `http://192.168.100.70:4321/display`
-- Width/Height sesuaikan dengan resolusi stream
-- Centang **"Shutdown source when not visible"** → OFF
-- Centang **"Refresh browser when scene becomes active"** → optional
-
-### 5. Akses Stream Deck dari HP
-
-Buka browser di HP, akses:
-```
-http://192.168.100.70:4321
+stream-deck-local/
+├── src/
+│   ├── pages/
+│   │   ├── index.astro          # Halaman utama stream deck
+│   │   ├── meme.astro           # Meme board
+│   │   ├── ticker.astro         # Kontrol ticker (dari HP)
+│   │   ├── display.astro        # Overlay meme (di Streamlabs)
+│   │   ├── ticker-display.astro # Overlay ticker (di Streamlabs)
+│   │   └── api/
+│   │       ├── meme.ts          # API trigger meme
+│   │       ├── memes.ts         # API CRUD daftar meme
+│   │       └── ticker.ts        # API state ticker
+│   └── data/
+│       └── memes.json           # Database meme (auto-generate)
+├── public/
+│   └── memes/                   # Folder file video/gif meme
+├── .env                         # Konfigurasi (auto-generate, jangan di-commit!)
+├── setup.mjs                    # Script auto-setup IP & Streamlabs
+├── START.bat                    # Dobel klik ini buat mulai
+└── package.json
 ```
 
 ---
 
-## Nambahin Meme Baru
+## 🔧 Troubleshooting
 
-Edit array `memes` di `src/pages/meme.astro`:
+### ❌ Notepad terbuka minta isi token
+- Buka Streamlabs → Settings → Remote Control → copy token
+- Di Notepad, ganti `ISI_TOKEN_STREAMLABS_DI_SINI` dengan token lo
+- Save, tutup Notepad, jalanin `START.bat` lagi
 
-```js
-const memes = [
-  { id: 'm1', label: '😂 BRUH', file: 'BRUH.mp4', type: 'video', color: '#ff4b2b' },
-  { id: 'm2', label: '😲 WOW',  file: 'wow.gif',  type: 'image', color: '#00d4ff' },
-  // tambah di sini:
-  { id: 'm3', label: '💀 DEAD', file: 'dead.mp4', type: 'video', color: '#9b59b6' },
-];
-```
+### ❌ "Streamlabs tidak bisa dikonek"
+- Pastiin Streamlabs udah dibuka **sebelum** dobel klik `START.bat`
+- Di Streamlabs: Settings → Remote Control → pastiin Remote Control aktif
 
-Taruh file meme (`.mp4`, `.gif`, `.jpg`, dll) di folder:
-```
-public/memes/
-```
+### ❌ Meme tidak muncul di stream
+- Pastiin source `ALERTS` ada di scene yang lagi dipake
+- Kalau baru pertama kali setup: klik source `ALERTS` → klik **"Refresh cache of current page"**
+- Cek file meme ada di folder `public/memes/`
+
+### ❌ Overlay ticker tidak muncul
+- Pastiin source `ticker` ada di scene yang lagi dipake
+- Kalau baru pertama kali setup: klik source `ticker` → klik **"Refresh cache of current page"**
+
+### ❌ HP tidak bisa buka stream deck
+- Pastiin HP dan laptop konek ke **WiFi yang sama**
+- Buka browser HP, ketik URL yang muncul di terminal: `http://[IP]:4321`
+
+### ❌ IP berubah tiap ganti WiFi
+- Normal! Tinggal jalanin `START.bat` lagi — IP otomatis terupdate
+
+### ❌ Meme muncul sendiri saat pindah scene
+- Sudah diatasi — meme hanya muncul sekali setelah diklik, tidak akan muncul lagi walau scene di-refresh
 
 ---
 
-## Troubleshooting
+## 📝 Catatan
 
-| Problem | Solusi |
-|---|---|
-| API `/api/meme` return 404 | Pastikan `output: 'server'` ada di `astro.config.mjs` dan nama file adalah `meme.ts` bukan `meme-api.ts` |
-| Meme ga muncul di Streamlabs | Klik sekali di halaman `display` buat unlock autoplay browser |
-| Tombol meme ga respons | Cek console browser — pastikan fetch ke `/api/meme` berhasil (status 200) |
-| Ga bisa diakses dari HP | Jalankan dengan flag `--host`: `npm run dev -- --host` |
-| Video ga bunyi | Browser source Streamlabs perlu "interact" dulu — klik kanan source → Interact, lalu klik halaman display-nya |
-
----
-
-## IP & Config
-
-Ganti IP sesuai PC lo di file-file berikut kalau pindah jaringan:
-
-- `src/pages/meme.astro` — baris `fetch('http://192.168.100.70:4321/api/meme')`
-- `src/pages/display.astro` — baris IP di fungsi `playMeme`
-- `src/pages/index.astro` — baris `const IP_PC`
-"# Stream-Deck-local" 
+- File `.env` **jangan di-push ke GitHub** karena berisi API token (sudah ada di `.gitignore`)
+- Data meme tersimpan di `src/data/memes.json` — backup file ini kalau mau pindah laptop
+- File meme (video/gif) tersimpan di `public/memes/` — backup folder ini juga
+- Teks ticker tersimpan di browser HP via localStorage — kalau ganti HP perlu ketik ulang
