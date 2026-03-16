@@ -169,8 +169,9 @@ stream-deck-local/
 ---
 
 ## 📝 Catatan
-
-- File `.env` **jangan di-push ke GitHub** karena berisi API token (sudah ada di `.gitignore`)
 - Data meme tersimpan di `src/data/memes.json` — backup file ini kalau mau pindah laptop
 - File meme (video/gif) tersimpan di `public/memes/` — backup folder ini juga
 - Teks ticker tersimpan di browser HP via localStorage — kalau ganti HP perlu ketik ulang
+
+Web app ini awalnya dibuat untuk coba-coba framework astro dari node.js. Melihat performanya yang cepat, saya memutuskan untuk menyempurnakannya dengan bantuan claude.ai untuk membuat fitur-fitur dan mengatasi error yang terjadi selama pembuatan. Jika ada bug ataupun error bisa menghubungi via email. Selamat mencoba dan semoga membantu bagi kalian yang ingin memiliki streamdeck namun belum dapat membelinya. 
+Salam semi vibe-coder HAHA
